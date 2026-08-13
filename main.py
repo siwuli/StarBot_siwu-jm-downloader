@@ -29,11 +29,12 @@ FILE_SEND_RETRY_DELAY = 20
 # 下载意图关键词（Agent 强制工具调用钩子使用）
 DOWNLOAD_INTENT_RE = re.compile(r"JM\s*\d+|找本|下载本子|下载漫画|本子", re.I)
 
-# 免唤醒直接触发的正则：匹配『找本544188』『JM544188』『找本 544188』等。
-# AstrBot 标准指令（@filter.command）要求 @ 机器人或唤醒词才触发，
-# 导致未 @ 的指令落入 LLM 流程、被模型/API 拒绝。改用正则过滤器（RegexFilter
-# 不检查唤醒状态），让用户直接说也能触发，并在处理完后 stop_event 终止传播。
-DOWNLOAD_TRIGGER_RE = re.compile(r"(?:找本|JM)\s*(\d+)", re.I)
+# 直接触发正则：锚定整条消息必须是「找本/JM + 编号」。AstrBot 标准指令
+# （@filter.command）只匹配空格分隔形式（『找本 350234』），『找本350234』
+# 这种紧贴形式匹配不到，故用正则精确捕获；配合 is_at_or_wake_command 判断：
+# 带唤醒词（兔兔//）或被 @ 时命中下载，未唤醒时（直接说『找本xxx』）不触发。
+# 锚定避免误吞 Agent 的自然语言请求（如『帮我下载JM350234』，那是工具调用场景）。
+DOWNLOAD_TRIGGER_RE = re.compile(r"^(?:找本|JM)\s*(\d+)$", re.I)
 
 # 注入到 LLM 请求的强制指令。
 # AstrBot 默认开启 llm_safety_mode，会注入"避免色情/违规内容、拒绝不安全请求"的安全提示词，
@@ -202,12 +203,13 @@ class JMComicDownloader(star.Star):
             f"博士，已开始下载 JM{album_id}，完成后会自动发送压缩包，请耐心等待～"
         )
 
-    @filter.regex(r"(?:找本|JM)\s*\d+")
+    @filter.regex(r"^(?:找本|JM)\s*\d+$")
     async def find_album_direct(self, event: AstrMessageEvent):
-        """免唤醒直接触发：直接说『找本544188』或『JM544188』即可，无需 @ 机器人。
+        """唤醒后直接触发：『兔兔找本250234』『/找本350234』或『@兔兔 找本xxx』时命中下载。
 
-        AstrBot 标准指令未 @ 时会落入 LLM 流程，可能被模型/API 内容过滤拒绝；
-        这里用正则过滤器直接命中下载逻辑，并在处理完成后 stop_event 终止传播。
+        正则锚定整条消息（消息本身必须是「找本/JM + 编号」），避免吞掉 Agent 的
+        自然语言请求（如『帮我下载JM350234』，那是工具调用场景）。
+        未唤醒（群聊直接说『找本xxx』）时不触发下载，仅终止事件传播。
         """
         if not bool(self.config.get("jm_enabled", True)):
             return
@@ -215,6 +217,16 @@ class JMComicDownloader(star.Star):
         text = event.get_message_str() or ""
         match = DOWNLOAD_TRIGGER_RE.search(text)
         if not match:
+            return
+
+        # 带唤醒词（兔兔//）或被 @ 才算触达；否则不下载，直接终止并提示
+        if not event.is_at_or_wake_command:
+            event.stop_event()
+            await event.send(
+                MessageChain().message(
+                    "博士，请用「兔兔找本xxx」或「/找本xxx」或 @兔兔 来找本～"
+                )
+            )
             return
 
         album_id = match.group(1)
