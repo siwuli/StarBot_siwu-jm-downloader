@@ -2,7 +2,7 @@
 
 通过 JM 禁漫本子编号下载漫画，打包为压缩包发送给你，支持 **Agent 自动判断触发**。
 
-> 插件 id：`jm_downloader`　当前版本：`1.0.0`
+> 插件 id：`jm_downloader`　当前版本：`1.0.1`
 
 ## 触发方式
 
@@ -38,6 +38,7 @@
 | 配置项 | 说明 | 默认 |
 | --- | --- | --- |
 | `jm_enabled` | 插件总开关 | `true` |
+| `jm_force_agent_tool` | 检测到下载意图时向 LLM 注入强制指令、确保调用下载工具（解决 Agent 拒答/不调用工具） | `true` |
 | `jm_zip_password_enabled` | 是否给导出 zip 添加密码 | `false` |
 | `jm_zip_password` | 自定义密码；留空且开启加密时，使用当前本子编号 | 空 |
 
@@ -67,6 +68,7 @@ python plugins/astrbot/siwu-jm-downloader-1_0/build.py
 
 | 版本 | 更新内容 |
 |---|---|
+| `1.0.1` | 新增「强制 Agent 调用工具」：检测到下载意图时向 LLM 注入强制指令并确保工具可用，解决 AstrBot 安全模式提示词导致模型拒答、不调用工具的问题；新增配置项 `jm_force_agent_tool` |
 | `1.0.0` | 迁移至 AstrBot：注册 Agent 函数工具 `download_jm_comic` 自动触发；后台下载避免工具超时；「找本」命令回退；支持压缩包加密 |
 
 ## 项目地址

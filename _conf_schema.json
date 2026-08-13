@@ -5,6 +5,12 @@
     "type": "bool",
     "default": true
   },
+  "jm_force_agent_tool": {
+    "description": "强制 Agent 调用下载工具",
+    "hint": "开启后，检测到下载意图（如 JM+编号、找本）时，会向 LLM 注入强制指令并要求必须调用 download_jm_comic 工具，避免 Agent 拒答",
+    "type": "bool",
+    "default": true
+  },
   "jm_zip_password_enabled": {
     "description": "压缩包加密",
     "hint": "开启后，下载的压缩包会被加密；密码见下方配置，留空则使用本子编号作为密码",
