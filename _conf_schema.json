@@ -1,0 +1,20 @@
+{
+  "jm_enabled": {
+    "description": "启用JM下载",
+    "hint": "关闭后，JM 下载相关的 Agent 工具与「找本」命令将不再响应",
+    "type": "bool",
+    "default": true
+  },
+  "jm_zip_password_enabled": {
+    "description": "压缩包加密",
+    "hint": "开启后，下载的压缩包会被加密；密码见下方配置，留空则使用本子编号作为密码",
+    "type": "bool",
+    "default": false
+  },
+  "jm_zip_password": {
+    "description": "压缩包密码",
+    "hint": "自定义压缩包密码，留空时使用本子编号作为密码（仅在开启加密时生效）",
+    "type": "string",
+    "default": ""
+  }
+}
