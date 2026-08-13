@@ -29,6 +29,12 @@ FILE_SEND_RETRY_DELAY = 20
 # 下载意图关键词（Agent 强制工具调用钩子使用）
 DOWNLOAD_INTENT_RE = re.compile(r"JM\s*\d+|找本|下载本子|下载漫画|本子", re.I)
 
+# 免唤醒直接触发的正则：匹配『找本544188』『JM544188』『找本 544188』等。
+# AstrBot 标准指令（@filter.command）要求 @ 机器人或唤醒词才触发，
+# 导致未 @ 的指令落入 LLM 流程、被模型/API 拒绝。改用正则过滤器（RegexFilter
+# 不检查唤醒状态），让用户直接说也能触发，并在处理完后 stop_event 终止传播。
+DOWNLOAD_TRIGGER_RE = re.compile(r"(?:找本|JM)\s*(\d+)", re.I)
+
 # 注入到 LLM 请求的强制指令。
 # AstrBot 默认开启 llm_safety_mode，会注入"避免色情/违规内容、拒绝不安全请求"的安全提示词，
 # 导致模型（如 mimo）对 JM 下载这类请求直接拒答而不调用工具。
@@ -171,26 +177,59 @@ class JMComicDownloader(star.Star):
 
     @filter.command("找本")
     async def find_album_command(self, event: AstrMessageEvent):
-        """命令回退：找本 350234"""
+        """命令回退：找本 350234（需 @ 或唤醒词）"""
         if not bool(self.config.get("jm_enabled", True)):
+            event.stop_event()
             yield event.make_result().message("博士，JM 下载功能当前已关闭。")
             return
 
         text = event.get_message_str() or ""
         match = re.search(r"找本[\s ]*?(\d+)", text)
         if not match:
+            event.stop_event()
             yield event.make_result().message("博士，请告诉兔兔要找的本子编号，例如：\n找本 350234")
             return
 
         album_id = match.group(1)
         if album_id in self._running_tasks and not self._running_tasks[album_id].done():
+            event.stop_event()
             yield event.make_result().message(f"博士，JM{album_id} 正在下载中，请稍候。")
             return
 
         self._start_download(event, album_id)
+        event.stop_event()
         yield event.make_result().message(
             f"博士，已开始下载 JM{album_id}，完成后会自动发送压缩包，请耐心等待～"
         )
+
+    @filter.regex(r"(?:找本|JM)\s*\d+")
+    async def find_album_direct(self, event: AstrMessageEvent):
+        """免唤醒直接触发：直接说『找本544188』或『JM544188』即可，无需 @ 机器人。
+
+        AstrBot 标准指令未 @ 时会落入 LLM 流程，可能被模型/API 内容过滤拒绝；
+        这里用正则过滤器直接命中下载逻辑，并在处理完成后 stop_event 终止传播。
+        """
+        if not bool(self.config.get("jm_enabled", True)):
+            return
+
+        text = event.get_message_str() or ""
+        match = DOWNLOAD_TRIGGER_RE.search(text)
+        if not match:
+            return
+
+        album_id = match.group(1)
+        if album_id in self._running_tasks and not self._running_tasks[album_id].done():
+            await event.send(MessageChain().message(f"博士，JM{album_id} 正在下载中，请稍候。"))
+            event.stop_event()
+            return
+
+        self._start_download(event, album_id)
+        await event.send(
+            MessageChain().message(
+                f"博士，已开始下载 JM{album_id}，完成后会自动发送压缩包，请耐心等待～"
+            )
+        )
+        event.stop_event()
 
     def _start_download(self, event: AstrMessageEvent, album_id: str) -> None:
         """启动后台下载任务。下载可能耗时数分钟，不能在工具调用中同步等待，
