@@ -2,7 +2,7 @@
 
 通过 JM 禁漫本子编号下载漫画，打包为压缩包发送给你，支持 **Agent 自动判断触发**。
 
-> 插件 id：`jm_downloader`　当前版本：`1.0.2`
+> 插件 id：`jm_downloader`　当前版本：`1.0.3`
 
 ## 触发方式
 
@@ -78,6 +78,7 @@ python plugins/astrbot/siwu-jm-downloader-1_0/build.py
 
 | 版本 | 更新内容 |
 |---|---|
+| `1.0.3` | 修复：开启压缩包加密时打包报错（缺 `pyzipper` 依赖），requirements 补充 `pyzipper` |
 | `1.0.2` | 新增免唤醒直接触发：无需 @ 机器人，直接说「找本544188 / JM544188」即触发下载，并 `stop_event` 终止传播，不再落入 LLM 流程（解决未 @ 时指令被模型/API 内容过滤拒绝的问题） |
 | `1.0.1` | 新增「强制 Agent 调用工具」：检测到下载意图时向 LLM 注入强制指令并确保工具可用，解决 AstrBot 安全模式提示词导致模型拒答、不调用工具的问题；新增配置项 `jm_force_agent_tool` |
 | `1.0.0` | 迁移至 AstrBot：注册 Agent 函数工具 `download_jm_comic` 自动触发；后台下载避免工具超时；「找本」命令回退；支持压缩包加密 |
