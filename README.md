@@ -94,4 +94,4 @@ python plugins/astrbot/siwu-jm-downloader-1_0/build.py
 
 ## 项目地址
 
-<https://github.com/siwuli/StarBot_siwu-jm-downloader>
+<https://github.com/siwuli/AstrBot_siwu-jm-downloader>

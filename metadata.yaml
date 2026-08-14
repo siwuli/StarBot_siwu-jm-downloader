@@ -4,5 +4,5 @@ desc: "通过漫画编号（如 350234）下载漫画并打包为压缩包发送
 help: "对机器人说「找本 350234」，或让 Agent 直接下载（如：帮我下载漫画 350234）"
 version: 1.0.6
 author: siwuli
-repo: https://github.com/siwuli/StarBot_siwu-jm-downloader
+repo: https://github.com/siwuli/AstrBot_siwu-jm-downloader
 astrbot_version: ">=4.0.0"
