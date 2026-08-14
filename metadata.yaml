@@ -2,7 +2,7 @@ name: jm_downloader
 display_name: JM漫画下载
 desc: "通过 JM 编号（如 350234）下载禁漫本子并打包为压缩包发送，支持 Agent 自动判断触发"
 help: "对机器人说「找本 350234」，或让 Agent 直接下载（如：帮我下载 JM350234）"
-version: 1.0.4
+version: 1.0.5
 author: siwuli
 repo: https://github.com/siwuli/StarBot_siwu-jm-downloader
 astrbot_version: ">=4.0.0"

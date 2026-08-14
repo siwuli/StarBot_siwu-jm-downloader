@@ -64,32 +64,47 @@ def _download_and_pack(album_id: str, zip_password: Optional[str]) -> dict:
     Returns:
         {'zip_path', 'title', 'size', 'password'}
     """
+    import shutil
+    import tempfile
+
     import jmcomic
 
     os.makedirs(download_root, exist_ok=True)
 
-    # 先尝试获取元信息（标题），失败不影响下载
-    title = ""
+    # jmcomic 的 JmOption.default() 会把 dir_rule.base_dir 设为进程工作目录
+    # （即 AstrBot 根目录），下载时会按章节在根目录留下残留目录（如 5、6.1…）。
+    # 这里把下载目录固定到 download_root 下的临时目录，打包完成后整体清理。
+    option = jmcomic.JmOption.default()
+    work_dir = tempfile.mkdtemp(prefix=f"jm_{album_id}_", dir=download_root)
+    option.dir_rule.base_dir = work_dir
+
     try:
-        client = jmcomic.JmOption.default().new_jm_client()
-        album = client.get_album_detail(album_id)
-        title = album.name if album and album.name else ""
-    except Exception as e:
-        logger.warning(f"获取 JM{album_id} 元信息失败: {e}")
+        # 先尝试获取元信息（标题），失败不影响下载
+        title = ""
+        try:
+            client = option.new_jm_client()
+            album = client.get_album_detail(album_id)
+            title = album.name if album and album.name else ""
+        except Exception as e:
+            logger.warning(f"获取 JM{album_id} 元信息失败: {e}")
 
-    # 文件名只用本子编号，避免标题过长导致部分适配器发不出去
-    zip_kwargs = {
-        "zip_dir": download_root,
-        "delete_original_file": True,
-        "filename_rule": "Aid",
-    }
-    if zip_password:
-        zip_kwargs["encrypt"] = {"password": zip_password}
+        # 文件名只用本子编号，避免标题过长导致部分适配器发不出去
+        zip_kwargs = {
+            "zip_dir": download_root,
+            "delete_original_file": True,
+            "filename_rule": "Aid",
+        }
+        if zip_password:
+            zip_kwargs["encrypt"] = {"password": zip_password}
 
-    jmcomic.download_album(
-        album_id,
-        extra=jmcomic.Feature.export_zip(**zip_kwargs),
-    )
+        jmcomic.download_album(
+            album_id,
+            option=option,
+            extra=jmcomic.Feature.export_zip(**zip_kwargs),
+        )
+    finally:
+        # 清理临时下载目录（含 jmcomic 生成的章节目录残留），zip 产物不受影响
+        shutil.rmtree(work_dir, ignore_errors=True)
 
     # 优先使用编号命名的 zip；兼容旧产物再做模糊匹配
     zip_path = os.path.join(download_root, f"{album_id}.zip")
